@@ -1,0 +1,15 @@
+# api/.htaccess — Protege archivos internos del backend.
+# Bloquea el acceso directo por URL a config, helpers y el esquema SQL.
+# Los endpoints (*.php) siguen siendo accesibles.
+
+<FilesMatch "(config\.php|helpers\.php|schema\.sql)$">
+  Require all denied
+</FilesMatch>
+
+# Por compatibilidad con Apache 2.2 (algunos hostings antiguos):
+<IfModule !mod_authz_core.c>
+  <FilesMatch "(config\.php|helpers\.php|schema\.sql)$">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>

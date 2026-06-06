@@ -1,0 +1,58 @@
+# .htaccess — Wediom English (raíz del sitio en VenHost / Apache)
+# Compresión, caché de assets y HTTPS forzado.
+
+# ── Forzar HTTPS ─────────────────────────────────────────────────────────────
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} off
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# ── Compresión gzip ──────────────────────────────────────────────────────────
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json image/svg+xml
+</IfModule>
+
+# ── Caché de assets estáticos ────────────────────────────────────────────────
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 week"
+  ExpiresByType application/javascript "access plus 1 week"
+  ExpiresByType text/javascript "access plus 1 week"
+  ExpiresByType image/svg+xml "access plus 1 month"
+  # El HTML con caché corta:
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# ── Los .jsx contienen la lógica de la app: sin caché agresiva ────────────────
+# Así los usuarios reciben siempre la última versión al actualizar la web.
+<IfModule mod_headers.c>
+  <FilesMatch "\.jsx$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+# ── Seguridad básica de cabeceras ────────────────────────────────────────────
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  # HSTS: fuerza HTTPS en el navegador durante 1 año (solo activar con SSL ya OK).
+  Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  # Limitar APIs sensibles del navegador que la app no usa.
+  Header set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+</IfModule>
+
+# Bloquear acceso directo a archivos sensibles desde la raíz.
+<FilesMatch "(\.sql|\.md|package(-lock)?\.json)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# Evitar listar el contenido de carpetas
+Options -Indexes

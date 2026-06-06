@@ -1,0 +1,17 @@
+# Secretos del backend — NUNCA a GitHub
+api/config.php
+
+# Dependencias (251 MB, regenerables)
+node_modules/
+
+# Basura del sistema
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Editor
+.vscode/
+
+# Originales pesados (opcional)
+ilustraciones/
+assets/_source/

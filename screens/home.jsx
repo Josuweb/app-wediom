@@ -276,7 +276,8 @@ function StepList({ steps, onStartLevel, narrow }) {
               columnGap: narrow ? 0 : GAP, rowGap: 14 }}>
               {theme.cards.map((level, ci) => (
                 <StateLevelCard key={level.id} step={theme.step} level={level}
-                  onStartLevel={onStartLevel} offsetY={ci === 0 ? oL : oR}/>
+                  onStartLevel={onStartLevel} offsetY={ci === 0 ? oL : oR}
+                  narrow={narrow} reviewSide={ci === 0 ? 'right' : 'left'}/>
               ))}
               {/* Línea punteada CURVA horizontal entre las dos cards (solo en escritorio) */}
               {!narrow && theme.cards.length === 2 && (
@@ -317,7 +318,7 @@ function hmIsGreen(hex) {
 }
 
 // ── Card de un NIVEL (estado) con su logo representativo ─────────────────────
-function StateLevelCard({ step, level, onStartLevel, offsetY = 0 }) {
+function StateLevelCard({ step, level, onStartLevel, offsetY = 0, narrow = false, reviewSide = 'right' }) {
   const done = (typeof isLevelDone === 'function') && isLevelDone(level.id);
   const lvUnlocked = (typeof isLevelUnlockedById === 'function') ? isLevelUnlockedById(level.id) : true;
   const ready = level.ready;
@@ -329,8 +330,16 @@ function StateLevelCard({ step, level, onStartLevel, offsetY = 0 }) {
   const accentDark = step.shadow;
   const cta = !ready ? '⏳ Próximamente' : !lvUnlocked ? '🔒 Bloqueado' : done ? '↻ Repasar' : '▶ Comenzar';
   const imgSrc = level.landmark || level.icon;
+  // Reseña / dato curioso del estado (hover sobre foto o nombre).
+  // Solo en estados DESBLOQUEADOS (los bloqueados no muestran reseña).
+  const [showReview, setShowReview] = React.useState(false);
+  const review = (!locked && typeof window !== 'undefined' && window.STATE_REVIEWS)
+    ? window.STATE_REVIEWS[level.slug] : null;
 
   return (
+    <div style={{ position: 'relative',
+      zIndex: (showReview && !narrow) ? 60 : undefined,
+      transform: offsetY ? `translateY(${offsetY}px)` : 'none' }}>
     <div style={{
       position: 'relative',
       background: 'white',
@@ -339,7 +348,6 @@ function StateLevelCard({ step, level, onStartLevel, offsetY = 0 }) {
       borderRadius: 'var(--r-xl)', overflow: 'hidden',
       boxShadow: cur ? `0 4px 0 ${accentDark}22` : 'var(--shadow-sm)',
       opacity: (!ready || (!lvUnlocked && !done)) ? 0.7 : 1,
-      transform: offsetY ? `translateY(${offsetY}px)` : 'none',
     }}>
       <div style={{ padding: '14px 18px',
         filter: locked ? 'blur(2px)' : 'none',
@@ -352,8 +360,13 @@ function StateLevelCard({ step, level, onStartLevel, offsetY = 0 }) {
           </div>
           <TheoryTagButton step={step} accent={accent} inline/>
         </div>
-        {/* Imagen del lugar + nivel + ubicación */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        {/* Imagen del lugar + nivel + ubicación (hover → reseña del estado) */}
+        <div
+          onMouseEnter={() => review && setShowReview(true)}
+          onMouseLeave={() => setShowReview(false)}
+          onClick={() => review && setShowReview(v => !v)}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+            cursor: review ? 'pointer' : 'default' }}>
           <div style={{ width: 92, height: 92, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
             position: 'relative', background: 'var(--bg)',
             border: `3px solid ${accent}` }}>
@@ -395,6 +408,20 @@ function StateLevelCard({ step, level, onStartLevel, offsetY = 0 }) {
                 transform: 'translateX(-5px)' }}>📍 {level.city}</div>
             )}
           </div>
+          {/* Reseña en MÓVIL: inline dentro de la card (debajo de la ubicación) */}
+          {narrow && review && showReview && (
+            <div style={{ width: '100%', marginTop: 4, background: `${accent}12`,
+              border: `1px solid ${accent}55`, borderRadius: 'var(--r-md)',
+              padding: '8px 10px', textAlign: 'left' }}>
+              <div style={{ fontSize: 10, fontWeight: 900, color: accent, textTransform: 'uppercase',
+                letterSpacing: '0.05em', marginBottom: 3 }}>
+                🇺🇸 Estado N°{review.num} · {level.state}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', lineHeight: 1.4 }}>
+                {review.text}
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <div style={{ padding: '0 18px 16px', filter: locked ? 'blur(2px)' : 'none' }}>
@@ -431,6 +458,32 @@ function StateLevelCard({ step, level, onStartLevel, offsetY = 0 }) {
           );
         })()}
       </div>
+    </div>
+    {/* Reseña en PC: globo flotante FUERA de la card, a la altura de la foto */}
+    {!narrow && review && showReview && (
+      <div style={{
+        position: 'absolute', top: 60, zIndex: 60, width: 230,
+        ...(reviewSide === 'left' ? { right: 'calc(50% + 54px)' } : { left: 'calc(50% + 54px)' }),
+        background: accent, color: 'white', border: 'none',
+        borderRadius: 'var(--r-lg)', boxShadow: '0 10px 28px rgba(15,23,42,0.22)',
+        padding: '12px 14px', textAlign: 'left', pointerEvents: 'none',
+      }}>
+        {/* Flecha que apunta hacia la foto */}
+        <span style={{ position: 'absolute', top: 18, width: 0, height: 0,
+          borderTop: '9px solid transparent', borderBottom: '9px solid transparent',
+          ...(reviewSide === 'left'
+            ? { left: '100%', borderLeft: `10px solid ${accent}` }
+            : { right: '100%', borderRight: `10px solid ${accent}` }) }}/>
+        <div style={{ fontSize: 10.5, fontWeight: 900, color: 'white', textTransform: 'uppercase',
+          letterSpacing: '0.05em', marginBottom: 4 }}>
+          🇺🇸 Estado N°{review.num} · {level.state}
+        </div>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'white', lineHeight: 1.45,
+          textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>
+          {review.text}
+        </div>
+      </div>
+    )}
     </div>
   );
 }
